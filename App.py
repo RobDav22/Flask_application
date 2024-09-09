@@ -15,7 +15,10 @@ app.secret_key = 'mysecretkey'
 
 @app.route('/')
 def Index():
-    return render_template('index.html')
+    cur = mysql.connection.cursor()
+    cur.execute('SELECT * FROM contactos')
+    data = cur.fetchall()
+    return render_template('index.html', contactos = data)
 
 
 @app.route('/add_contact', methods=['POST'])
@@ -34,13 +37,38 @@ def add_contact():
         flash('Contacto Agregado Exitosamente')
         return redirect(url_for('Index'))
 
-@app.route('/edit')
-def edit_contact():
-    return 'Editar contacto'
+@app.route('/edit/<id>')
+def get_contact(id):
+    cur = mysql.connection.cursor()
+    cur.execute('SELECT * FROM contactos WHERE id = %s', [id])
+    data = cur.fetchall()
+    return render_template('edit-contact.html', contacto = data[0])
 
-@app.route('/delete')
-def delete_contact():
-    return 'Eliminar contacto'
+@app.route('/update/<id>', methods =['POST'])
+def update_contact(id):
+    if request.method == 'POST':
+        nombreCompleto = request.form['nombreCompleto']
+        telefono = request.form['telefono']
+        correo = request.form['correo']
+        cur = mysql.connection.cursor()
+        cur .execute("""
+            UPDATE contactos
+            SET nombreCompleto = %s,
+                correo = %s,
+                telefono = %s
+            WHERE id = %s
+        """, (nombreCompleto, correo, telefono, id))
+        mysql.connection.commit()
+        flash('Contacto Actualizado Exitosamente')
+        return redirect(url_for('Index'))
+
+@app.route('/delete/<string:id>')
+def delete_contact(id):
+    cur = mysql.connection.cursor()
+    cur.execute('DELETE FROM contactos WHERE id = {0}'.format(id))
+    mysql.connection.commit()
+    flash('Contacto Removido Exitosamente')
+    return redirect(url_for('Index'))
 
 if __name__ == '__main__':
     app.run(port = 3000, debug = True)
